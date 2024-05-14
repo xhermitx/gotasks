@@ -15,13 +15,16 @@ import (
 )
 
 type User struct{
+	Uid int 
 	Username string
 	PasswordHash string
 }
 
 type Task struct{
 	TaskName string
-	TaskDate time.Time
+	Date string
+	Status string
+	Uid int
 }
 
 func generateHash(pwd string) string{
@@ -64,15 +67,66 @@ func main() {
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	sqlDB.SetConnMaxLifetime(time.Minute*3)
 
-	
 	// CREATING A NEW USER
-	user := User{Username: "Rohit", PasswordHash: generateHash("pwd")}
+	if err := createUser(db);err!=nil{
+		fmt.Println("Error occured!")
+	}
+
+	if err := addTask(db);err!=nil{
+		fmt.Println("Error occured")
+	}
+	
+}
+
+func createUser(db *gorm.DB) error{
+	var username,password string
+
+	fmt.Println("Enter the username and to be deleted and its password: ")
+	fmt.Scan(&username,&password)
+
+	user := User{Username: username, PasswordHash: generateHash(password)}
 
 	result := db.Create(&user)
 	if result.Error != nil{
-		log.Fatal(result.Error)
+		log.Printf("Error creating user: %v", result.Error)
+        return result.Error // Return the error to the caller
 	}else{
 		log.Print("User ID: ",user)
-		log.Print("Rows Affected: ",result.RowsAffected)
+		log.Print("Rows Affected: ", result.RowsAffected)
 	}
+	return nil
+}
+
+func addTask(db *gorm.DB) error{
+	var username,password string
+
+	fmt.Println("Enter the username and to be deleted and its password: ")
+	fmt.Scan(&username,&password)
+
+	user := User{Username: username, PasswordHash: generateHash(password)}
+
+	res := db.Find(&user, "username = ? and password_hash = ?",username,generateHash(password))
+	if res.Error !=nil{
+		log.Print(res.Error)
+	}
+
+	// log.Print(user.Uid)
+
+	task := Task{
+					TaskName: "Pay bills", 
+					Date: time.Now().Format("2006-01-02"), 
+					Status: "Pending",
+					Uid: user.Uid,
+				}
+
+	result := db.Create(&task)
+
+	if result.Error != nil{
+		log.Printf("Error creating user: %v", result.Error)
+        return result.Error // Return the error to the caller
+	}else{
+		log.Print("User ID: ",user)
+		log.Print("Rows Affected: ", result.RowsAffected)
+	}
+	return nil
 }

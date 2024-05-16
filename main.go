@@ -1,11 +1,11 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
+	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -14,27 +14,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type User struct{
-	Uid int 
-	Username string
-	PasswordHash string
-}
-
 type Task struct{
-	TaskName string
-	Date string
-	Status string
-	Uid int
-}
-
-func generateHash(pwd string) string{
-	h := sha256.New()
-
-	h.Write([]byte(pwd))
-
-	hash := base64.StdEncoding.EncodeToString(h.Sum(nil))
-
-	return hash
+	Tid      int    `gorm:"primary_key;AUTO_INCREMENT"` // Specify auto-increment
+    TaskName string `gorm:"not null"`
+    Status   string `gorm:"not null;default:'Pending'"`
+    Date     string `gorm:"not null"`
 }
 
 func main() {
@@ -43,7 +27,7 @@ func main() {
 	if err!=nil{
 		log.Panic("Error loading the environment variables")
 	}
-	
+
 	dbName := os.Getenv("DB_NAME")
 	dbUser := os.Getenv("DB_USER")
 	dbAddress := os.Getenv("DB_ADDRESS")
@@ -62,71 +46,119 @@ func main() {
 	sqlDB.SetMaxIdleConns(10)
 
 	// SetMaxOpenConns sets the maximum number of open connections to the database.
-	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxOpenConns(10)
 
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	sqlDB.SetConnMaxLifetime(time.Minute*3)
 
-	// CREATING A NEW USER
-	if err := createUser(db);err!=nil{
-		fmt.Println("Error occured!")
-	}
+	// ADD A TASK
+	// if err := addTask(db);err!=nil{
+	// 	fmt.Println("Error occured")
+	// }
 
-	if err := addTask(db);err!=nil{
+	// DELETE A TASK
+	// if err := deleteTask(db);err!=nil{
+	// 	fmt.Println("Error occured")
+	// }
+
+	// // UPDATE A TASK
+	// if err := updateTask(db);err!=nil{
+	// 	fmt.Println("Error occured")
+	// }
+
+	// VIEW ALL TASKS
+	if err := viewTasks(db);err!=nil{
 		fmt.Println("Error occured")
 	}
-	
-}
 
-func createUser(db *gorm.DB) error{
-	var username,password string
-
-	fmt.Println("Enter the username and to be deleted and its password: ")
-	fmt.Scan(&username,&password)
-
-	user := User{Username: username, PasswordHash: generateHash(password)}
-
-	result := db.Create(&user)
-	if result.Error != nil{
-		log.Printf("Error creating user: %v", result.Error)
-        return result.Error // Return the error to the caller
-	}else{
-		log.Print("User ID: ",user)
-		log.Print("Rows Affected: ", result.RowsAffected)
-	}
-	return nil
 }
 
 func addTask(db *gorm.DB) error{
-	var username,password string
-
-	fmt.Println("Enter the username and to be deleted and its password: ")
-	fmt.Scan(&username,&password)
-
-	user := User{Username: username, PasswordHash: generateHash(password)}
-
-	res := db.Find(&user, "username = ? and password_hash = ?",username,generateHash(password))
-	if res.Error !=nil{
-		log.Print(res.Error)
-	}
-
-	// log.Print(user.Uid)
 
 	task := Task{
-					TaskName: "Pay bills", 
-					Date: time.Now().Format("2006-01-02"), 
+					TaskName: "Pay Bills", 
+					Date: time.Now().Format("2006-01-02 15:04:05"), 
 					Status: "Pending",
-					Uid: user.Uid,
 				}
 
 	result := db.Create(&task)
-
 	if result.Error != nil{
 		log.Printf("Error creating user: %v", result.Error)
         return result.Error // Return the error to the caller
-	}else{
-		log.Print("User ID: ",user)
-		log.Print("Rows Affected: ", result.RowsAffected)
 	}
+	
+	log.Print("Task ID: ",task.Tid)
+	log.Print("Rows Affected: ", result.RowsAffected)
+
+	return nil
+}
+
+func deleteTask(db *gorm.DB) error{
+	var taskID int
+	fmt.Println("\nEnter the ID of the task to be deleted: ")
+	fmt.Scan(&taskID)
+
+	result := db.Delete(&Task{},taskID)
+	if result.Error != nil{
+		log.Println("An Error occured while deleting the Task")
+		return result.Error
+	}
+
+	log.Println("Number of Rows Affected : ",result.RowsAffected)
+
+	return nil
+}
+
+func updateTask(db *gorm.DB) error{
+
+	reader := bufio.NewReader(os.Stdin)
+
+	var taskID int
+	var taskName, taskDate, taskStatus string
+
+	fmt.Print("Enther the Task ID to be updated : ")
+	fmt.Scanln(&taskID)
+
+	fmt.Print("Enter the Task Name to be Updated: ")
+	taskName,err := reader.ReadString('\n')
+	if err!=nil{
+		log.Print("Error occured while scanning taskName")
+		return err
+	}
+	taskName = strings.TrimSpace(taskName)
+
+	fmt.Print("Enter the Task Status to be Updated (Completed, Pending, In Progress): ")
+	taskStatus,_ = reader.ReadString('\n')
+	taskStatus = strings.TrimSpace(taskStatus)
+
+	fmt.Print("Enter the Task Date to be Updated (YYYY-MM-DD HH-MM-SS): ")
+	taskDate,_ = reader.ReadString('\n')
+	taskDate = strings.TrimSpace(taskDate)
+
+	result := db.Save(&Task{Tid: taskID,TaskName: taskName,Status: taskStatus,Date: taskDate})
+	if result.Error != nil{
+		log.Println("Error updating the task")
+		return result.Error
+	}
+
+	log.Println("Rows Affected : ", result.RowsAffected)
+	return nil
+}
+
+func viewTasks(db *gorm.DB) error{
+	
+	var tasks []Task
+	
+	result := db.Find(&tasks)
+	if result.Error !=nil{
+		log.Print("Error retrieving Data")
+		return result.Error
+	}
+
+	log.Println("Rows retrieved: ")
+	for _, task := range tasks{
+		fmt.Printf("ID: %d, Name: %s, Date: %s, Status: %s\n", task.Tid, task.TaskName, task.Date, task.Status)
+	}
+
 	return nil
 }

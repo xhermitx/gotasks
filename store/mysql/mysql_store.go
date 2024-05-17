@@ -45,7 +45,7 @@ func (m *MySQLStore) DeleteTask(taskID int) error {
 
 func (m *MySQLStore) UpdateTask(task *models.Task) error {
 
-	result := m.db.Save(&task)
+	result := m.db.Save(task)
 	if result.Error != nil {
 		log.Println("Error updating the task")
 		return result.Error

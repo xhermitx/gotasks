@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	handlers "github.com/xhermitx/gotasks/handlers"
+	mw "github.com/xhermitx/gotasks/middlewares"
 	msql "github.com/xhermitx/gotasks/store/mysql"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -22,12 +23,14 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 
 func handleRequests(handler *handlers.TaskHandler) {
 	router := mux.NewRouter().StrictSlash(true)
+
 	router.HandleFunc("/", homePage)
 	router.HandleFunc("/tasks", handler.ViewTasks).Methods("GET")
 	router.HandleFunc("/tasks", handler.CreateTask).Methods("POST")
 	router.HandleFunc("/tasks", handler.UpdateTask).Methods("PUT")
 	router.HandleFunc("/tasks/{id}", handler.DeleteTask).Methods("DELETE")
-	log.Fatal(http.ListenAndServe(":8080", router))
+
+	log.Fatal(http.ListenAndServe(os.Getenv("PORT"), mw.CorsMiddleware(router)))
 }
 
 func main() {

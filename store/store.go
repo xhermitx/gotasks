@@ -8,5 +8,5 @@ type Store interface {
 	CreateTask(task *models.Task) error
 	UpdateTask(task *models.Task) error
 	DeleteTask(taskID int) error
-	ViewTasks() error
+	ViewTasks() ([]models.Task, error)
 }

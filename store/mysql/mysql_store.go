@@ -1,4 +1,4 @@
-package crud
+package mysql
 
 import (
 	"fmt"
@@ -8,10 +8,17 @@ import (
 	"gorm.io/gorm"
 )
 
+type MySQLStore struct {
+	db *gorm.DB
+}
 
-func AddTask(db *gorm.DB, task models.Task) error {
+func NewMySQLStore(db *gorm.DB) *MySQLStore {
+	return &MySQLStore{db: db}
+}
 
-	result := db.Create(&task)
+func (m *MySQLStore) CreateTask(task *models.Task) error {
+
+	result := m.db.Create(&task)
 	if result.Error != nil {
 		log.Printf("Error creating user: %v", result.Error)
 		return result.Error // Return the error to the caller
@@ -23,9 +30,9 @@ func AddTask(db *gorm.DB, task models.Task) error {
 	return nil
 }
 
-func DeleteTask(db *gorm.DB, taskID int) error {
+func (m *MySQLStore) DeleteTask(taskID int) error {
 
-	result := db.Delete(&models.Task{}, taskID)
+	result := m.db.Delete(&models.Task{}, taskID)
 	if result.Error != nil {
 		log.Println("An Error occured while deleting the Task")
 		return result.Error
@@ -36,9 +43,9 @@ func DeleteTask(db *gorm.DB, taskID int) error {
 	return nil
 }
 
-func UpdateTask(db *gorm.DB, task models.Task) error {
+func (m *MySQLStore) UpdateTask(task *models.Task) error {
 
-	result := db.Save(&task)
+	result := m.db.Save(&task)
 	if result.Error != nil {
 		log.Println("Error updating the task")
 		return result.Error
@@ -48,14 +55,14 @@ func UpdateTask(db *gorm.DB, task models.Task) error {
 	return nil
 }
 
-func ViewTasks(db *gorm.DB) (models.Task, error) {
+func (m *MySQLStore) ViewTasks() ([]models.Task, error) {
 
 	var tasks []models.Task
 
-	result := db.Find(&tasks)
+	result := m.db.Find(&tasks)
 	if result.Error != nil {
 		log.Print("Error retrieving Data")
-		return models.Task{},result.Error
+		return []models.Task{}, result.Error
 	}
 
 	log.Println("Rows retrieved: ")
@@ -63,5 +70,5 @@ func ViewTasks(db *gorm.DB) (models.Task, error) {
 		fmt.Printf("ID: %d, Name: %s, Date: %s, Status: %s\n", task.Tid, task.TaskName, task.Date, task.Status)
 	}
 
-	return models.Task{},nil
+	return tasks, nil
 }

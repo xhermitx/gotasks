@@ -36,6 +36,8 @@ func (t *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	if err = json.Unmarshal(reqBody, &body); err != nil {
 		// ERROR PROCESSING THE REQUEST BODY
 		http.Error(w, "Error processing the request", http.StatusBadRequest) // 400
+		fmt.Println("Error occured")
+		fmt.Println(string(reqBody))
 		return
 	}
 
